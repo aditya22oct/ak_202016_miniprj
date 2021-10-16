@@ -27,7 +27,7 @@ def cb_laser_scan(msg):
     print(len(right_front_region ))
     print(type(laser_data))
 
-    #
+    # Defining regions to know position of obstacle
     g_regions = {'front_region': min([min(front_region),10]),
     'left_front_region': min([min(left_front_region),10]),
     'right_front_region': min([min(right_front_region),10])
