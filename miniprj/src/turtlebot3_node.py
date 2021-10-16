@@ -26,7 +26,7 @@ class Turtlebot3_Node(object):
         self.curr_pose = None
         self.curr_orient = None
         self.orient_acc = 1
-
+        
     def cb_sub_scan(self, msg_scan):
         '''
         Subscriber Callback method for /scan topic
@@ -37,9 +37,9 @@ class Turtlebot3_Node(object):
         # to know the position of obstacle
         front_region = laser_dist_data[0:18] + laser_dist_data[342:]
         left_front_region = laser_dist_data[18:54]
-        left_region = laser_dist_data[54:90]
+        left_region = laser_dist_data[54:108]
         right_front_region = laser_dist_data[306:342]
-        right_region = laser_dist_data[270:306]
+        right_region = laser_dist_data[262:306]
 
         self.regions = {'front_region': min([min(front_region),10]),
         'left_front_region': min([min(left_front_region),10]),
@@ -81,6 +81,7 @@ class Turtlebot3_Node(object):
         This methods moves robot in straight fwd direction
         '''
         self.vel_val.linear.x = 0.1
+
         self.vel_val.angular.z = 0.0
         self.pub_cmd_vel.publish(self.vel_val)
         rospy.loginfo('Moving Forward')
@@ -160,7 +161,15 @@ class Turtlebot3_Node(object):
 
             self.rate.sleep()
 
+    def follow_wall(self):
+        '''
+        This method follows the wall without colliding it.
+        '''
+
+
+
 if __name__ == '__main__':
     robot = Turtlebot3_Node()
     # robot.start_find_gap()
-    robot.adjust_orientation(110)
+    # robot.adjust_orientation(110)
+    robot.follow_wall()
