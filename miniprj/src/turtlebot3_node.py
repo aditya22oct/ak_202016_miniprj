@@ -20,13 +20,16 @@ class Turtlebot3_Node(object):
         self.pub_cmd_vel = rospy.Publisher('/cmd_vel', Twist, queue_size=2)
         self.vel_val = Twist()
         self.regions = {}
-        self.rate = rospy.Rate(20)
+        self.rate = rospy.Rate(10)
         self.min_dist_to_obs = 1.5 # unit m
-        self.safe_dist = 2
+        self.safe_dist = 5
         self.curr_pose = None
         self.curr_orient = None
-        self.orient_acc = 1
-        
+        self.orient_acc = 0.8
+        self.forward_start = True
+        self.fwd_orient = None
+        self.state = 1
+
     def cb_sub_scan(self, msg_scan):
         '''
         Subscriber Callback method for /scan topic
@@ -80,11 +83,31 @@ class Turtlebot3_Node(object):
         '''
         This methods moves robot in straight fwd direction
         '''
+
+        if self.forward_start:
+            print("Entered if loop")
+            self.fwd_orient = self.curr_orient
+            print("Orientation: {}".format(self.fwd_orient))
+            self.forward_start = False
+
+        orien_diff = self.fwd_orient  - self.curr_orient
+
+        if abs(orien_diff) > self.orient_acc:
+            if orien_diff > 0:
+                self.vel_val.angular.z = 0.005
+            else:
+                self.vel_val.angular.z = -0.005
+
         self.vel_val.linear.x = 0.1
 
-        self.vel_val.angular.z = 0.0
-        self.pub_cmd_vel.publish(self.vel_val)
         rospy.loginfo('Moving Forward')
+
+        if self.regions['front_region'] < self.min_dist_to_obs:
+            print("wall found")
+            self.state = 2
+
+        print("Desired Orientation: {}".format(self.fwd_orient))
+        print("Current Orientation: {}".format(self.curr_orient))
 
     def stop_robot(self):
         '''
@@ -92,7 +115,7 @@ class Turtlebot3_Node(object):
         '''
         self.vel_val.linear.x = 0.0
         self.vel_val.angular.z = 0.0
-        self.pub_cmd_vel.publish(self.vel_val)
+
         rospy.loginfo('Stopping')
 
     def turn_left(self):
@@ -121,17 +144,18 @@ class Turtlebot3_Node(object):
         time.sleep(0.25)
 
         while not rospy.is_shutdown():
-            if self.regions['front_region'] > self.min_dist_to_obs:
-                self.move_fwd()
-            elif self.regions['front_region'] < self.min_dist_to_obs:
-                if self.regions['left_front_region'] > self.safe_dist and self.regions['right_front_region'] < self.safe_dist:
-                    self.turn_left()
-                elif self.regions['left_front_region'] < self.safe_dist and self.regions['right_front_region'] > self.safe_dist:
-                    self.turn_right()
-                elif self.regions['left_front_region'] > self.safe_dist and self.regions['right_front_region'] > self.safe_dist:
-                    self.turn_left()
-                elif self.regions['left_front_region'] < self.safe_dist and self.regions['right_front_region'] < self.safe_dist:
-                    self.stop_robot()
+            # if self.regions['front_region'] > self.min_dist_to_obs:
+            #     self.move_fwd()
+            # elif self.regions['front_region'] < self.min_dist_to_obs:
+            #     if self.regions['left_front_region'] > self.safe_dist and self.regions['right_front_region'] < self.safe_dist:
+            #         self.turn_left()
+            #     elif self.regions['left_front_region'] < self.safe_dist and self.regions['right_front_region'] > self.safe_dist:
+            #         self.turn_right()
+            #     elif self.regions['left_front_region'] > self.safe_dist and self.regions['right_front_region'] > self.safe_dist:
+            #         self.turn_left()
+            #     elif self.regions['left_front_region'] < self.safe_dist and self.regions['right_front_region'] < self.safe_dist:
+            #         self.stop_robot()
+            self.move_fwd()
             self.rate.sleep()
 
     def adjust_orientation(self, desired_orient):
@@ -165,6 +189,41 @@ class Turtlebot3_Node(object):
         '''
         This method follows the wall without colliding it.
         '''
+        time.sleep(0.25)
+
+        if self.regions['right_region'] < self.safe_dist:
+            self.move_fwd()
+
+        else:
+            self.stop_robot()
+
+        print(self.forward_start)
+        self.forward_start = True
+        print(self.forward_start)
+
+    def start_task(self):
+        '''
+        This method starts the desired ask
+        '''
+
+        time.sleep(0.25)
+
+        print(self.state)
+
+        while True:
+
+            print('in while loop')
+            print(self.state)
+
+            if self.state == 1:
+                self.move_fwd()
+
+            elif self.state == 2:
+                self.stop_robot()
+
+
+            self.pub_cmd_vel.publish(self.vel_val)
+            self.rate.sleep()
 
 
 
@@ -172,4 +231,4 @@ if __name__ == '__main__':
     robot = Turtlebot3_Node()
     # robot.start_find_gap()
     # robot.adjust_orientation(110)
-    robot.follow_wall()
+    robot.start_task()
