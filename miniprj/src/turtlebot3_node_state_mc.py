@@ -24,9 +24,11 @@ class Turtlebot3_Node(object):
         self.curr_pose = None
         self.curr_orient = None
         self.orient_acc = 0.8
-        self.min_dist_to_obs = 1.5
+        self.orient_achieved = False
+        self.min_dist_to_obs = 1
         self.previous_state = 1
         self.state = 1
+        self.next_state = 1
 
     def cb_sub_scan(self, msg_scan):
         '''
@@ -82,8 +84,10 @@ class Turtlebot3_Node(object):
 
         state(int): Next state
         '''
-        self.previous_state = self.state
-        self.state = state
+        if self.state != state:
+            self.previous_state = self.state
+            self.state = state
+            self.orient_achieved = False
 
     def stop_robot(self):
         '''
@@ -92,7 +96,7 @@ class Turtlebot3_Node(object):
         self.vel_val.linear.x = 0.0
         self.vel_val.angular.z = 0.0
 
-        self.change_state(3)
+        # self.change_state(3)
 
     def turn_left(self):
         '''
@@ -118,9 +122,10 @@ class Turtlebot3_Node(object):
         self.vel_val.linear.x = 0.2
         rospy.loginfo('Moving Forward')
 
-        if self.regions['front_region'] < self.min_dist_to_obs:
-            rospy.loginfo("obstacle Found!!!")
-            self.change_state(2)
+        # if self.regions['front_region'] < self.min_dist_to_obs:
+        #     rospy.loginfo("obstacle Found!!!")
+        #     self.stop_robot()
+        #     self.change_state(2)
 
     def adjust_orientation(self, desired_orient):
         '''
@@ -143,14 +148,40 @@ class Turtlebot3_Node(object):
             else:
                 self.stop_robot()
         else:
-            rospy.loginfo("Orientation Adjusted")
-            self.change_state(2)
+            self.orient_achieved = True
 
-    def follow_wall():
+    def follow_wall(self):
         '''
         This method will help robot follow the wall till gap is found
         '''
-        pass
+        self.vel_val.linear.x = 0.2
+        rospy.loginfo('Following wall')
+
+        if self.regions['right_region'] > 2.5:
+            self.stop_robot()
+            self.change_state(4)
+        else:
+            self.move_fwd()
+
+    def state_transition(self):
+
+        if (self.regions['front_region'] > self.min_dist_to_obs) and (self.previous_state == 1) and (self.state == 1):
+            self.change_state(1)
+        elif (self.regions['front_region'] < self.min_dist_to_obs) and (self.state == 1):
+            self.change_state(2)
+        elif (self.previous_state == 1) and (self.state == 2):
+            self.change_state(3)
+        elif self.orient_achieved and (self.previous_state == 2):
+            self.change_state(2)
+        elif (self.previous_state == 3) and (self.state == 2):
+            self.change_state(4)
+        elif (self.regions['right_region'] > 3) and (self.previous_state == 2):
+            self.change_state(2)
+        elif (self.previous_state == 4) and (self.state == 2):
+            self.change_state(5)
+        # elif (self.previous_state == 5) and (self.state == 2):
+        #     self.change_state(1)
+
 
     def start_task(self):
         '''
@@ -159,21 +190,23 @@ class Turtlebot3_Node(object):
 
         time.sleep(0.25)
 
-        print(self.state)
-
         while True:
 
             print('in while loop')
             print(self.state)
+            self.state_transition()
 
             if self.state == 1:
                 self.move_fwd()
 
-            if self.state == 2:
+            elif self.state == 2:
                 self.stop_robot()
 
-            if self.state == 3:
+            elif self.state == 3:
                 self.adjust_orientation(90)
+
+            elif self.state == 4:
+                self.follow_wall()
 
             self.pub_cmd_vel.publish(self.vel_val)
             self.rate.sleep()
