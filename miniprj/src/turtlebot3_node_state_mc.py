@@ -146,6 +146,11 @@ class Turtlebot3_Node(object):
             rospy.loginfo("Orientation Adjusted")
             self.change_state(2)
 
+    def follow_wall():
+        '''
+        This method will help robot follow the wall till gap is found
+        '''
+        pass
 
     def start_task(self):
         '''
