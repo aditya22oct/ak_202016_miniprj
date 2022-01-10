@@ -1,0 +1,5 @@
+<launch>
+  <!-- My Package launch file -->
+  <node pkg="miniprj" type="turtlebot3_node_state_mc.py" name="Turtlebot3_Node" output="screen">
+  </node>
+</launch>
